@@ -51,6 +51,35 @@ public abstract class CloudFormationHandler implements RequestStreamHandler {
 
 	protected ObjectMapper mapper = new ObjectMapper();
 
+	/**
+	 * Processes a request made by CloudFormation custom resource.
+	 * 
+	 * @param req the request from CloudFormation
+	 * @param context the lambda execution context
+	 * @return the response that should be sent to CloudFormation
+	 */
+	public abstract CloudFormationResponse process(CloudFormationRequest req, Context context);
+	
+	/**
+	 * Validates if the CloudFormation request has all the needed parameters to
+	 * process this request. This handler will not even attempt to process the
+	 * request if it is not valid.
+	 * 
+	 * @param req the request from CloudFormation
+	 * @param context the lambda execution context
+	 * @return <code>true</code> if request is valid, <code>false</code>
+	 *         otherwise
+	 */
+	public abstract boolean validate(CloudFormationRequest req, Context context);
+
+
+	/**
+	 * The main entry point for all AWS Lambda functions that want to process
+	 * requests from CloudFormation custom resources
+	 * 
+	 * @see com.amazonaws.services.lambda.runtime.RequestStreamHandler#handleRequest(java.io.InputStream,
+	 *      java.io.OutputStream, com.amazonaws.services.lambda.runtime.Context)
+	 */
 	public void handleRequest(InputStream input, OutputStream output, Context context) throws IOException {
 
 		CloudFormationRequest req = null;
@@ -84,26 +113,6 @@ public abstract class CloudFormationHandler implements RequestStreamHandler {
 		sendLambdaResponse(lambdaResponse, output);
 	}
 
-	/**
-	 * Processes a request made by CloudFormation custom resource.
-	 * 
-	 * @param req the request from CloudFormation
-	 * @param context the lambda execution context
-	 * @return the response that should be sent to CloudFormation
-	 */
-	public abstract CloudFormationResponse process(CloudFormationRequest req, Context context);
-	
-	/**
-	 * Validates if the CloudFormation request has all the needed parameters to
-	 * process this request. This handler will not even attempt to process the
-	 * request if it is not valid.
-	 * 
-	 * @param req the request from CloudFormation
-	 * @param context the lambda execution context
-	 * @return <code>true</code> if request is valid, <code>false</code>
-	 *         otherwise
-	 */
-	public abstract boolean validate(CloudFormationRequest req, Context context);
 	
 	protected void sendLambdaResponse(String resp, OutputStream output) throws IOException {
 		output.write(resp.getBytes());
