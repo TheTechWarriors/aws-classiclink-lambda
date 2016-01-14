@@ -1,4 +1,20 @@
-package com.thetechwarriors.awsclassiclinklambda;
+/*
+ * Copyright 2016 Tech Warriors, LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.thetechwarriors.awslambda.cloudformation;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -16,6 +32,21 @@ import com.amazonaws.services.lambda.runtime.RequestStreamHandler;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+/**
+ * A base handler that takes care of processing requests from CloudFormation
+ * custom resources. Requests made during Create/Update/Delete phase of
+ * CloudFormation custom resources will invoke this lambda function. The
+ * response of this lambda function does not really matter, instead a
+ * CloudFormation endpoint needs to be informated of the results. The endpoint
+ * URL is provided by CloudFormation in the request. Extenders of this object
+ * need to
+ * <ul>
+ * <li>validate that the request has all the information they need to process
+ * the request</li>
+ * <li>process the request
+ * <li></li>and generate a response to be sent to Cloudformation</li>
+ */
+
 public abstract class CloudFormationHandler implements RequestStreamHandler {
 
 	protected ObjectMapper mapper = new ObjectMapper();
@@ -27,16 +58,16 @@ public abstract class CloudFormationHandler implements RequestStreamHandler {
 		// parse the request 
 		try {
 			req = mapper.readValue(input, CloudFormationRequest.class);
-			logIt(context, "Request Received:\n" + mapper.writeValueAsString(req));
+			logIt(context, "Received: Request=" + mapper.writeValueAsString(req));
 		} catch (JsonProcessingException e) {
-			logIt(context, "ERROR: Parsing Request, Message=" + e.getMessage());
+			logIt(context, "Error parsing request: Error=" + e.getMessage());
 		}
 
 		String lambdaResponse = "FAILED";
 		if (req != null) {
 			// validate the request
 			if (validate(req, context)) {
-				logIt(context, "Request is valid");
+				logIt(context, "Request is valid, attempting to process request");
 				// get the response for sending to CFN
 				CloudFormationResponse cfnResponse = process(req, context);
 				if (cfnResponse != null) {
@@ -53,7 +84,25 @@ public abstract class CloudFormationHandler implements RequestStreamHandler {
 		sendLambdaResponse(lambdaResponse, output);
 	}
 
+	/**
+	 * Processes a request made by CloudFormation custom resource.
+	 * 
+	 * @param req the request from CloudFormation
+	 * @param context the lambda execution context
+	 * @return the response that should be sent to CloudFormation
+	 */
 	public abstract CloudFormationResponse process(CloudFormationRequest req, Context context);
+	
+	/**
+	 * Validates if the CloudFormation request has all the needed parameters to
+	 * process this request. This handler will not even attempt to process the
+	 * request if it is not valid.
+	 * 
+	 * @param req the request from CloudFormation
+	 * @param context the lambda execution context
+	 * @return <code>true</code> if request is valid, <code>false</code>
+	 *         otherwise
+	 */
 	public abstract boolean validate(CloudFormationRequest req, Context context);
 	
 	protected void sendLambdaResponse(String resp, OutputStream output) throws IOException {
@@ -69,12 +118,12 @@ public abstract class CloudFormationHandler implements RequestStreamHandler {
 			HttpPut put = new HttpPut(url);
 			put.setEntity(new StringEntity(json, ContentType.APPLICATION_JSON));
 			
-			logIt(context, "About to send response to CloudFormation: Message=" + json);
+			logIt(context, "About to notify CloudFormation: Message=" + json);
 			CloseableHttpResponse httpResponse = httpclient.execute(put);
 			return httpResponse.getStatusLine().getStatusCode() == 200;
 			
 		} catch (Exception e) {
-			logIt(context, "Error sending response to CloudFormation: Error=" + e.getMessage());
+			logIt(context, "Error notifying CloudFormation: Error=" + e.getMessage());
 			return false;
 		}
 	}

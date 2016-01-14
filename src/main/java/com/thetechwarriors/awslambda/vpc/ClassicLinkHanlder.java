@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.thetechwarriors.awsclassiclinklambda;
+package com.thetechwarriors.awslambda.vpc;
 
 import java.util.Map;
 
@@ -25,8 +25,15 @@ import com.amazonaws.services.ec2.model.DisableVpcClassicLinkRequest;
 import com.amazonaws.services.ec2.model.EnableVpcClassicLinkDnsSupportRequest;
 import com.amazonaws.services.ec2.model.EnableVpcClassicLinkRequest;
 import com.amazonaws.services.lambda.runtime.Context;
+import com.thetechwarriors.awslambda.cloudformation.CloudFormationHandler;
+import com.thetechwarriors.awslambda.cloudformation.CloudFormationRequest;
+import com.thetechwarriors.awslambda.cloudformation.CloudFormationResponse;
 
-public class EnableClassicLinkHanlder extends CloudFormationHandler {
+/**
+ * Enables/disables ClassicLink and its DNS support for a given VPC
+ */
+
+public class ClassicLinkHanlder extends CloudFormationHandler {
 
 	
 	public CloudFormationResponse process(CloudFormationRequest req, Context context) {
@@ -53,12 +60,13 @@ public class EnableClassicLinkHanlder extends CloudFormationHandler {
 			}
 			
 			resp.setStatus("SUCCESS");
+			resp.setReason("SUCCESS");
 			resp.setPhysicalResourceId(vpcId + "-classiclink");
 
 		} catch (Exception e) {
 			resp.setStatus("FAILED");
 			resp.setReason(e.getMessage());
-			logIt(context, "Error in EnableClassicLinkHanlder: Message=" + e.getMessage());
+			logIt(context, "Error processing handler: Error=" + e.getMessage());
 		}
 		
 		return resp;
